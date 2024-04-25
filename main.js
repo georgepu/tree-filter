@@ -8,9 +8,17 @@ let filterMode = false;
 createTree(treeContainer, newData);
 
 document.querySelector('#generateButton').addEventListener('click', () => {
-  const filteredTreeData = filterTree(newData);
-  filterMode = true;
-  createTree(treeContainer, filteredTreeData);
+  const cloneData = JSON.parse(JSON.stringify(newData));
+  const filteredTreeData = filterTree(cloneData);
+  if (filteredTreeData.length) {
+    if (filterMode) {
+      treeContainer.removeChild(treeContainer.lastChild);
+    } else {
+      filterMode = true;
+    }
+    filteredTreeData[0].name = 'Filtered By';
+    createTree(treeContainer, filteredTreeData);
+  }
 });
 
 //transform raw data structure
@@ -94,7 +102,7 @@ function createTree(parent, items) {
 //upon clicking the generate btn
 function filterTree(treeData) {
   const filteredData = treeData.filter((row) => {
-    if (row.children && row.children.length) {
+    if (row.children.length) {
       row.children = filterTree(row.children);
     }
     return row.isChecked || row.children.length > 0;

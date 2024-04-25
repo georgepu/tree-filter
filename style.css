@@ -20,6 +20,11 @@ ul {
   margin-top: 4px;
 }
 
+#tree > ul > li > span:first-of-type {
+  font-weight: bolder;
+  font-size: large;
+}
+
 li {
   margin-top: 6px;
 }
@@ -31,6 +36,7 @@ li span {
 .total-span {
   background-color: #e4f1fa;
   padding-inline: 8px;
+  color: blue;
 }
 
 #generateButton {
