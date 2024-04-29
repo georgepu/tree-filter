@@ -1,14 +1,14 @@
-import { rawData } from './data';
-import './style.css';
+import { rawData } from './data.js';
 
 const treeContainer = document.querySelector('#tree');
 const newData = transformData(rawData);
 let filterMode = false;
+console.log(newData);
 
 createTree(treeContainer, newData);
 
 document.querySelector('#generateButton').addEventListener('click', () => {
-  const cloneData = JSON.parse(JSON.stringify(newData));
+  const cloneData = structuredClone(newData);
   const filteredTreeData = filterTree(cloneData);
   if (filteredTreeData.length) {
     if (filterMode) {
@@ -17,7 +17,7 @@ document.querySelector('#generateButton').addEventListener('click', () => {
       filterMode = true;
     }
     filteredTreeData[0].name = 'Filtered By';
-    createTree(treeContainer, filteredTreeData);
+    createTree(treeContainer, filteredTreeData, 'filtered');
   }
 });
 
@@ -29,12 +29,14 @@ function transformData(data) {
     dataMap[data.id] = {
       ...data,
       children: [],
+      parent: {},
       isChecked: false,
     };
   });
   rawData.forEach((data) => {
     if (data.parent > 0) {
       dataMap[data.parent].children.push(dataMap[data.id]);
+      dataMap[data.id].parent = dataMap[data.parent];
     } else {
       root.push(dataMap[data.id]);
     }
@@ -43,7 +45,7 @@ function transformData(data) {
 }
 
 //display transformed tree structure
-function createTree(parent, items) {
+function createTree(parent, items, name = 'original') {
   const ul = document.createElement('ul');
   parent.appendChild(ul);
 
@@ -53,11 +55,14 @@ function createTree(parent, items) {
     //add checkbox
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
+    checkbox.name = name;
     checkbox.checked = item.isChecked;
-    checkbox.addEventListener('change', () => {
+    name === 'original' && checkbox.addEventListener('change', event => {
+      console.log(event.target.name);
       item.isChecked = !item.isChecked;
+      reEvalTreeCheckbox(item);//update isChecked value for the whole chain from root node, then re-create tree to update DOM
     });
-    item.parent && li.appendChild(checkbox);
+    Object.keys(item.parent).length && li.appendChild(checkbox);
     //add label name text
     const span = document.createElement('span');
     span.textContent = item.name;
@@ -65,7 +70,7 @@ function createTree(parent, items) {
     //add total count
     const totalSpan = document.createElement('span');
     totalSpan.classList.add('total-span');
-    if (filterMode) {
+    if (name === 'filtered') {
       if (item.isChecked) {
         if (item.children.length) {
           totalSpan.textContent = `${getTotalCheckedCount(item) - 1}`;
@@ -84,7 +89,7 @@ function createTree(parent, items) {
     if (item.children.length > 0) {
       li.appendChild(toggle);
       item.isExpanded && toggle.classList.toggle('expanded');
-      const childUl = createTree(li, item.children);
+      const childUl = createTree(li, item.children, name);
       childUl.style.display = item.isExpanded ? 'block' : 'none';
     }
     toggle.addEventListener('click', () => {
@@ -118,3 +123,31 @@ function getTotalCheckedCount(item) {
   });
   return totalCount;
 }
+
+function checkNestedChildren(children, isParentChecked) {
+  children.length && children.forEach(node => {
+    node.isChecked = isParentChecked;
+    checkNestedChildren(node.children, node.isChecked);
+  })
+}
+
+function checkNestedParent(parent) {
+  parent.isChecked = parent.children.every(node => node.isChecked);
+  parent.parent.id > 1 && checkNestedParent(parent.parent);
+}
+
+function reEvalTreeCheckbox(item) {
+  checkNestedChildren(item.children, item.isChecked);
+  checkNestedParent(item.parent);
+  // below two-liner updates original tree on the screen
+  treeContainer.removeChild(treeContainer.firstChild);
+  createTree(treeContainer, newData);
+  reOrder();
+}
+
+function reOrder() {
+  const childNodes = treeContainer.childNodes;
+  childNodes.length > 1 && treeContainer.insertBefore(childNodes[1], childNodes[0]);
+}
+
+
