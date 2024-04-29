@@ -1,6 +1,7 @@
 import { rawData } from './data.js';
 
 const treeContainer = document.querySelector('#tree');
+let newDataMap = {};
 const newData = transformData(rawData);
 let filterMode = false;
 console.log(newData);
@@ -8,7 +9,7 @@ console.log(newData);
 createTree(treeContainer, newData);
 
 document.querySelector('#generateButton').addEventListener('click', () => {
-  const cloneData = structuredClone(newData);
+  const cloneData = JSON.parse(JSON.stringify(newData));
   const filteredTreeData = filterTree(cloneData);
   if (filteredTreeData.length) {
     if (filterMode) {
@@ -23,24 +24,24 @@ document.querySelector('#generateButton').addEventListener('click', () => {
 
 //transform raw data structure
 function transformData(data) {
-  const root = [],
-    dataMap = {};
+  const root = [];
+  const dataMap = {};
   rawData.forEach((data) => {
     dataMap[data.id] = {
       ...data,
       children: [],
-      parent: {},
       isChecked: false,
     };
   });
   rawData.forEach((data) => {
     if (data.parent > 0) {
       dataMap[data.parent].children.push(dataMap[data.id]);
-      dataMap[data.id].parent = dataMap[data.parent];
+      // dataMap[data.id].parent = dataMap[data.parent];
     } else {
       root.push(dataMap[data.id]);
     }
   });
+  newDataMap = dataMap;
   return root;
 }
 
@@ -58,11 +59,10 @@ function createTree(parent, items, name = 'original') {
     checkbox.name = name;
     checkbox.checked = item.isChecked;
     name === 'original' && checkbox.addEventListener('change', event => {
-      console.log(event.target.name);
       item.isChecked = !item.isChecked;
       reEvalTreeCheckbox(item);//update isChecked value for the whole chain from root node, then re-create tree to update DOM
     });
-    Object.keys(item.parent).length && li.appendChild(checkbox);
+    item.parent && li.appendChild(checkbox);
     //add label name text
     const span = document.createElement('span');
     span.textContent = item.name;
@@ -132,8 +132,9 @@ function checkNestedChildren(children, isParentChecked) {
 }
 
 function checkNestedParent(parent) {
-  parent.isChecked = parent.children.every(node => node.isChecked);
-  parent.parent.id > 1 && checkNestedParent(parent.parent);
+  const current = newDataMap[parent], papa = current.parent;
+  current.isChecked = current.children.every(node => node.isChecked);
+  papa > 1 && checkNestedParent(papa);
 }
 
 function reEvalTreeCheckbox(item) {
